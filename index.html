@@ -1,358 +1,442 @@
-import React, { useState, useEffect } from 'react';
-import { Clipboard, Save, RotateCcw, CheckCircle, FileSpreadsheet, X, FileText, Image as ImageIcon } from 'lucide-react';
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bảng Kết Quả Test Chậu - Cô Thư Bình An</title>
+    
+    <!-- 1. Tải các thư viện cần thiết từ CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Thư viện xuất ảnh & PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-const PelvicTestApp = () => {
-  // --- LOAD THƯ VIỆN ---
-  useEffect(() => {
-    const script1 = document.createElement('script');
-    script1.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
-    script1.async = true;
-    document.body.appendChild(script1);
+    <style>
+        /* Font chữ đẹp cho tiếng Việt */
+        @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Be Vietnam Pro', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100 text-slate-800">
+    <div id="root"></div>
 
-    return () => {
-      if (document.body.contains(script1)) document.body.removeChild(script1);
-    };
-  }, []);
+    <script type="text/babel">
+        const { useState, useEffect } = React;
 
-  // --- DỮ LIỆU ---
-  const initialData = {
-    studentName: '',
-    testDate: new Date().toISOString().split('T')[0],
-    pelvis: {
-      left: 'Chưa xác định',
-      right: 'Chưa xác định',
-      tilt: 'Chưa xác định',
-      rotation: 'Chưa xác định'
-    },
-    muscles: {
-      psoas: { id: 1, name: 'Cơ thắt lưng chậu - háng, bẹn', left: 'Chưa xác định', right: 'Chưa xác định' },
-      gluteMax: { id: 2, name: 'Cơ mông lớn - phần mông to nhất', left: 'Chưa xác định', right: 'Chưa xác định' },
-      rectusFem: { id: 3, name: 'Cơ thẳng đùi - đùi trước', left: 'Chưa xác định', right: 'Chưa xác định' },
-      hamstring: { id: 4, name: 'Cơ gân khoeo - đùi sau', left: 'Chưa xác định', right: 'Chưa xác định' },
-      ql: { id: 5, name: 'Cơ vuông thắt lưng - cơ eo lưng', left: 'Chưa xác định', right: 'Chưa xác định' },
-      gluteMed: { id: 6, name: 'Cơ mông nhỡ - hõm hông', left: 'Chưa xác định', right: 'Chưa xác định' },
-      adductor: { id: 7, name: 'Cơ khép đùi - đùi trong', left: 'Chưa xác định', right: 'Chưa xác định' },
-      tfl: { id: 8, name: 'Cơ căng mạc đùi - mặt ngoài trên đùi', left: 'Chưa xác định', right: 'Chưa xác định' },
-    },
-    note: ''
-  };
+        // --- ĐỊNH NGHĨA ICONS (Thay thế lucide-react để chạy không cần build) ---
+        const IconBase = ({ d, size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d={d} /></svg>
+        );
+        const Camera = (props) => <IconBase d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z M12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" {...props} />;
+        const Trash2 = (props) => <IconBase d="M3 6h18 M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M10 11v6 M14 11v6" {...props} />;
+        const Upload = (props) => <IconBase d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M17 8l-5-5-5 5 M12 3v12" {...props} />;
+        const CheckCircle = (props) => <IconBase d="M22 11.08V12a10 10 0 1 1-5.93-9.14 M22 4L12 14.01l-3-3" {...props} />;
+        const XCircle = (props) => <IconBase d="M18 6L6 18 M6 6l12 12" {...props} />; // Using standard X icon style
+        const XIcon = (props) => <IconBase d="M18 6L6 18 M6 6l12 12" {...props} />;
+        const RotateCcw = (props) => <IconBase d="M1 4v6h6 M3.51 15a9 9 0 1 0 2.13-9.36L1 10" {...props} />;
+        const Save = (props) => <IconBase d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z M17 21v-8H7v8 M7 3v5h8" {...props} />;
+        const Clipboard = (props) => <IconBase d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2 M15 2H9a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1z" {...props} />;
+        const ImageIcon = (props) => <IconBase d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2z M11 14l2 2 4-4 M11 14l-2 2-4-4" {...props} />; // Simplified image icon
+        const FileText = (props) => <IconBase d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8" {...props} />;
 
-  const [formData, setFormData] = useState(initialData);
-  const [showReport, setShowReport] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
+        const PelvicTestApp = () => {
+            // --- CẤU HÌNH ---
+            const DEFAULT_LOGO = "https://ui-avatars.com/api/?name=Logo&background=e0f2f1&color=00695c&size=128&length=1&font-size=0.33";
+            const LOGO_STORAGE_KEY = "pelvic_app_custom_logo_v2"; 
 
-  // --- HÀM ĐỊNH DẠNG NGÀY (dd/mm/yyyy) ---
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const [year, month, day] = dateString.split('-');
-    return `${day}/${month}/${year}`;
-  };
+            // --- DỮ LIỆU ---
+            const initialData = {
+                studentName: '',
+                testDate: new Date().toISOString().split('T')[0],
+                pelvis: {
+                left: 'Chưa xác định',
+                right: 'Chưa xác định',
+                tilt: 'Chưa xác định',
+                rotation: 'Chưa xác định'
+                },
+                muscles: {
+                psoas: { id: 1, name: 'Cơ thắt lưng chậu - háng, bẹn', left: 'Chưa xác định', right: 'Chưa xác định' },
+                gluteMax: { id: 2, name: 'Cơ mông lớn - phần mông to nhất', left: 'Chưa xác định', right: 'Chưa xác định' },
+                rectusFem: { id: 3, name: 'Cơ thẳng đùi - đùi trước', left: 'Chưa xác định', right: 'Chưa xác định' },
+                hamstring: { id: 4, name: 'Cơ gân khoeo - đùi sau', left: 'Chưa xác định', right: 'Chưa xác định' },
+                ql: { id: 5, name: 'Cơ vuông thắt lưng - cơ eo lưng', left: 'Chưa xác định', right: 'Chưa xác định' },
+                gluteMed: { id: 6, name: 'Cơ mông nhỡ - hõm hông', left: 'Chưa xác định', right: 'Chưa xác định' },
+                adductor: { id: 7, name: 'Cơ khép đùi - đùi trong', left: 'Chưa xác định', right: 'Chưa xác định' },
+                tfl: { id: 8, name: 'Cơ căng mạc đùi - mặt ngoài trên đùi', left: 'Chưa xác định', right: 'Chưa xác định' },
+                },
+                note: ''
+            };
 
-  // --- MÀU SẮC & INPUT ---
-  const getStatusColor = (value) => {
-    switch (value) {
-      case 'Bó / Ngắn': return 'text-red-600 font-bold bg-red-50';
-      case 'Lỏng / Dài': return 'text-blue-600 font-bold bg-blue-50';
-      case 'Đổ Trước': return 'text-orange-600 font-bold bg-orange-50';
-      case 'Đổ Sau': return 'text-indigo-600 font-bold bg-indigo-50';
-      case 'Nghiêng Trái': return 'text-green-600 font-bold bg-green-50';
-      case 'Nghiêng Phải': return 'text-rose-600 font-bold bg-rose-50';
-      case 'Phải xoay sau - Trái xoay trước': return 'text-fuchsia-600 font-bold bg-fuchsia-50';
-      case 'Trái xoay sau - Phải xoay trước': return 'text-cyan-600 font-bold bg-cyan-50';
-      case 'Chưa xác định': 
-      default: return 'text-gray-400 font-normal';
-    }
-  };
-
-  const muscleStatusOptions = ['Chưa xác định', 'Bó / Ngắn', 'Lỏng / Dài'];
-  const pelvisSideOptions = ['Chưa xác định', 'Đổ Trước', 'Đổ Sau'];
-  const pelvisTiltOptions = ['Chưa xác định', 'Nghiêng Trái', 'Nghiêng Phải'];
-  const pelvisRotationOptions = ['Chưa xác định', 'Phải xoay sau - Trái xoay trước', 'Trái xoay sau - Phải xoay trước'];
-
-  const handlePelvisChange = (field, value) => setFormData(prev => ({ ...prev, pelvis: { ...prev.pelvis, [field]: value } }));
-  const handleMuscleChange = (muscleKey, side, value) => setFormData(prev => ({ ...prev, muscles: { ...prev.muscles, [muscleKey]: { ...prev.muscles[muscleKey], [side]: value } } }));
-
-  // --- XUẤT ẢNH TỐI ƯU ---
-  const handleExportImage = async () => {
-    if (!window.html2canvas) { alert("Đang tải thư viện ảnh, vui lòng thử lại sau 2 giây!"); return; }
-    setIsExporting(true);
-    try {
-      const element = document.getElementById('report-print-area');
-      
-      // Cấu hình tối ưu cho Mobile
-      const canvas = await window.html2canvas(element, { 
-          scale: 3, // Tăng độ phân giải
-          useCORS: true, 
-          backgroundColor: '#ffffff',
-          windowWidth: 600, // Đặt chiều rộng giả lập
-          onclone: (clonedDoc) => {
-              const clonedElement = clonedDoc.getElementById('report-print-area');
-              if(clonedElement) {
-                  clonedElement.style.width = '700px'; 
-                  clonedElement.style.padding = '30px';
-              }
-          }
-      });
-      
-      const image = canvas.toDataURL("image/png");
-      const link = document.createElement('a');
-      link.href = image;
-      link.download = `KetQua_${formData.studentName || 'HocVien'}.png`;
-      link.click();
-    } catch (err) {
-      alert("Lỗi khi xuất ảnh: " + err);
-    }
-    setIsExporting(false);
-  };
-
-  const generateTextReport = () => {
-    let text = `📋 BẢNG KẾT QUẢ TEST CHẬU\n👤 Học viên: ${formData.studentName}\n📅 Ngày: ${formatDate(formData.testDate)}\n---\n`;
-    text += `1. CHẬU:\n Trái: ${formData.pelvis.left}\n Phải: ${formData.pelvis.right}\n Nghiêng: ${formData.pelvis.tilt}\n Xoay: ${formData.pelvis.rotation}\n\n`;
-    text += `2. CƠ (Vấn đề):\n`;
-    Object.values(formData.muscles).forEach(m => {
-        if(m.left !== 'Chưa xác định' || m.right !== 'Chưa xác định') text += `- ${m.name}: Trái(${m.left}) | Phải(${m.right})\n`;
-    });
-    return text;
-  };
-  
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(generateTextReport());
-    alert('Đã sao chép nội dung văn bản!');
-  };
-
-  const resetForm = () => {
-    if(confirm('Xóa hết dữ liệu để nhập mới?')) {
-      setFormData(initialData);
-      setShowReport(false);
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-50 p-2 sm:p-4 font-sans text-slate-800">
-      <div className="max-w-5xl mx-auto bg-white shadow-xl rounded-none sm:rounded-xl overflow-hidden">
-        
-        {/* HEADER */}
-        <div className="bg-teal-700 p-3 sm:p-4 text-white flex justify-between items-center sticky top-0 z-20 shadow-md">
-          <div className="flex items-center gap-3">
-            <div className="flex flex-col select-none">
-              <h1 className="text-lg sm:text-2xl font-bold uppercase leading-tight tracking-wide">CÔ THƯ BÌNH AN</h1>
-              <span className="text-[10px] sm:text-sm text-teal-100 uppercase tracking-widest font-medium opacity-90">Bình Tâm - Trí Tuệ - Yêu Thương</span>
-            </div>
-          </div>
-          
-          <button onClick={resetForm} className="bg-teal-800 p-2 rounded-lg hover:bg-teal-900 transition-colors shadow-sm" title="Nhập mới"><RotateCcw size={18} /></button>
-        </div>
-
-        <div className="p-2 sm:p-6 space-y-4 sm:space-y-6">
-          {/* Tiêu đề chính */}
-          <h2 className="text-base sm:text-xl font-bold text-teal-800 text-center uppercase border-b-2 border-teal-100 pb-2 mt-2">
-            Bảng Kiểm Tra Chậu
-          </h2>
-
-          {/* Form Nhập Liệu */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-gray-50 p-3 rounded border border-gray-200">
-             <div><label className="text-xs font-bold text-gray-500 uppercase">Tên Học Viên</label><input type="text" value={formData.studentName} onChange={(e) => setFormData({...formData, studentName: e.target.value})} className="w-full p-2 border rounded text-sm" placeholder="Nhập tên..." /></div>
-             <div><label className="text-xs font-bold text-gray-500 uppercase">Ngày Test</label><input type="date" value={formData.testDate} onChange={(e) => setFormData({...formData, testDate: e.target.value})} className="w-full p-2 border rounded text-sm" /></div>
-          </div>
-
-          {/* Bảng Chậu Input */}
-          <div className="overflow-x-auto border border-gray-300 rounded shadow-sm">
-              <h2 className="p-2 bg-gray-100 font-bold text-teal-800 uppercase text-xs border-b">1. Trạng Thái Chậu</h2>
-              <table className="w-full text-xs sm:text-sm text-left border-collapse min-w-[350px]">
-                <tbody>
-                  <tr className="border-b border-gray-200">
-                      <td rowSpan={2} className="p-1 bg-blue-50 font-bold text-center border-r w-12 sm:w-16 text-teal-900 align-middle" style={{verticalAlign: 'middle'}}>ĐỔ</td>
-                      <td className="p-1 w-20 sm:w-32 font-semibold border-r align-middle" style={{verticalAlign: 'middle'}}>Chậu Trái</td>
-                      <td className="p-1 align-middle" style={{verticalAlign: 'middle'}}>
-                          <select value={formData.pelvis.left} onChange={(e) => handlePelvisChange('left', e.target.value)} className={`w-full p-1 sm:p-2 outline-none bg-transparent rounded ${getStatusColor(formData.pelvis.left)}`}>
-                              {pelvisSideOptions.map(o=><option key={o} value={o} className="text-black bg-white font-normal">{o}</option>)}
-                          </select>
-                      </td>
-                  </tr>
-                  <tr className="border-b border-gray-200">
-                      <td className="p-1 font-semibold border-r align-middle" style={{verticalAlign: 'middle'}}>Chậu Phải</td>
-                      <td className="p-1 align-middle" style={{verticalAlign: 'middle'}}>
-                          <select value={formData.pelvis.right} onChange={(e) => handlePelvisChange('right', e.target.value)} className={`w-full p-1 sm:p-2 outline-none bg-transparent rounded ${getStatusColor(formData.pelvis.right)}`}>
-                              {pelvisSideOptions.map(o=><option key={o} value={o} className="text-black bg-white font-normal">{o}</option>)}
-                          </select>
-                      </td>
-                  </tr>
-                  <tr className="border-b border-gray-200">
-                      <td colSpan={2} className="p-1 bg-purple-50 font-bold text-center border-r align-middle text-teal-900" style={{verticalAlign: 'middle'}}>NGHIÊNG</td>
-                      <td className="p-1 align-middle" style={{verticalAlign: 'middle'}}>
-                          <select value={formData.pelvis.tilt} onChange={(e) => handlePelvisChange('tilt', e.target.value)} className={`w-full p-1 sm:p-2 outline-none bg-transparent rounded ${getStatusColor(formData.pelvis.tilt)}`}>
-                              {pelvisTiltOptions.map(o=><option key={o} value={o} className="text-black bg-white font-normal">{o}</option>)}
-                          </select>
-                      </td>
-                  </tr>
-                  <tr>
-                      <td colSpan={2} className="p-1 bg-purple-50 font-bold text-center border-r align-middle text-teal-900" style={{verticalAlign: 'middle'}}>XOAY</td>
-                      <td className="p-1 align-middle" style={{verticalAlign: 'middle'}}>
-                          <select value={formData.pelvis.rotation} onChange={(e) => handlePelvisChange('rotation', e.target.value)} className={`w-full p-1 sm:p-2 outline-none bg-transparent rounded ${getStatusColor(formData.pelvis.rotation)}`}>
-                              {pelvisRotationOptions.map(o=><option key={o} value={o} className="text-black bg-white font-normal">{o}</option>)}
-                          </select>
-                      </td>
-                  </tr>
-                </tbody>
-              </table>
-          </div>
-
-          {/* Bảng Cơ Input */}
-          <div className="overflow-x-auto rounded border border-gray-300 shadow-sm">
-             <h2 className="p-2 bg-gray-100 font-bold text-teal-800 uppercase text-xs border-b">2. Trạng Thái Cơ</h2>
-              <table className="w-full text-xs sm:text-sm border-collapse min-w-[350px]">
-                <thead className="bg-teal-700 text-white">
-                    <tr>
-                        <th className="p-2 border border-teal-600 w-8 text-center align-middle" style={{verticalAlign: 'middle'}}>#</th>
-                        <th className="p-2 border border-teal-600 text-left align-middle" style={{verticalAlign: 'middle'}}>Tên Cơ</th>
-                        <th className="p-2 border border-teal-600 w-20 sm:w-28 text-center align-middle" style={{verticalAlign: 'middle'}}>Trái</th>
-                        <th className="p-2 border border-teal-600 w-20 sm:w-28 text-center align-middle" style={{verticalAlign: 'middle'}}>Phải</th>
-                    </tr>
-                </thead>
-                <tbody className="bg-white">
-                  {Object.entries(formData.muscles).map(([key, m], idx) => (
-                    <tr key={key} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="p-1 border text-center text-gray-500 align-middle" style={{verticalAlign: 'middle'}}>{m.id}</td>
-                      <td className="p-1 border font-medium align-middle" style={{verticalAlign: 'middle'}}>{m.name}</td>
-                      <td className="p-0.5 border align-middle" style={{verticalAlign: 'middle'}}>
-                          <select value={m.left} onChange={(e) => handleMuscleChange(key, 'left', e.target.value)} className={`w-full p-1 sm:p-2 text-center outline-none bg-transparent rounded text-[11px] sm:text-sm ${getStatusColor(m.left)}`}>
-                              {muscleStatusOptions.map(o=><option key={o} value={o} className="text-black bg-white font-normal">{o}</option>)}
-                          </select>
-                      </td>
-                      <td className="p-0.5 border align-middle" style={{verticalAlign: 'middle'}}>
-                          <select value={m.right} onChange={(e) => handleMuscleChange(key, 'right', e.target.value)} className={`w-full p-1 sm:p-2 text-center outline-none bg-transparent rounded text-[11px] sm:text-sm ${getStatusColor(m.right)}`}>
-                              {muscleStatusOptions.map(o=><option key={o} value={o} className="text-black bg-white font-normal">{o}</option>)}
-                          </select>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-          </div>
+            const [formData, setFormData] = useState(initialData);
+            const [showReport, setShowReport] = useState(false);
+            const [isExporting, setIsExporting] = useState(false);
+            const [logo, setLogo] = useState(DEFAULT_LOGO);
             
-          {/* Ghi chú */}
-          <div><label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Ghi chú</label><textarea value={formData.note} onChange={(e) => setFormData({...formData, note: e.target.value})} className="w-full p-3 border border-gray-300 rounded h-20 outline-none focus:border-teal-500 text-sm" placeholder="..." /></div>
+            // --- LOGO ---
+            useEffect(() => {
+                const savedLogo = localStorage.getItem(LOGO_STORAGE_KEY);
+                if (savedLogo) {
+                setLogo(savedLogo);
+                }
+            }, []);
 
-          {/* Footer Buttons */}
-          <div className="flex flex-col gap-3 pb-10">
-              <button onClick={() => setShowReport(true)} className="w-full bg-teal-700 hover:bg-teal-800 text-white font-bold py-3 sm:py-4 rounded shadow-lg flex items-center justify-center gap-2 uppercase tracking-wide text-sm sm:text-base">
-                <Save size={18} /> XUẤT KẾT QUẢ
-              </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Modal Report - KẾT QUẢ */}
-      {showReport && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-2 sm:p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full flex flex-col max-h-[95vh]">
-            <div className="p-3 sm:p-4 border-b bg-teal-700 text-white flex justify-between items-center rounded-t-lg">
-              <h3 className="font-bold text-base sm:text-lg flex items-center gap-2"><CheckCircle size={20} /> BẢNG KẾT QUẢ</h3>
-              <button onClick={() => setShowReport(false)} className="text-white/80 hover:text-white rounded p-1"><X size={24} /></button>
-            </div>
+            const handleLogoUpload = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                if (file.size > 2 * 1024 * 1024) { 
+                    alert("File ảnh quá lớn! Vui lòng chọn ảnh dưới 2MB.");
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const base64String = reader.result;
+                    setLogo(base64String);
+                    try {
+                        localStorage.setItem(LOGO_STORAGE_KEY, base64String);
+                    } catch (error) {
+                        console.error("Lỗi lưu logo:", error);
+                    }
+                };
+                reader.readAsDataURL(file);
+                }
+            };
             
-            <div className="p-2 sm:p-4 overflow-y-auto bg-slate-100 font-sans">
-              
-              {/* === KHU VỰC IN ẢNH === */}
-              <div id="report-print-area" className="bg-white p-4 sm:p-8 shadow-sm rounded-lg mx-auto w-full" style={{minWidth: '600px'}}>
-                 
-                 {/* HEADER REPORT */}
-                 <div className="border-b-2 border-teal-600 pb-3 mb-4 text-center">
-                    <h1 className="text-2xl font-bold text-teal-900 uppercase">BẢNG KẾT QUẢ TEST CHẬU</h1>
-                 </div>
+            const resetLogo = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if(confirm("Bạn muốn xóa logo tùy chỉnh và quay về mặc định?")) {
+                    setLogo(DEFAULT_LOGO);
+                    localStorage.removeItem(LOGO_STORAGE_KEY);
+                }
+            };
 
-                 {/* Thông tin học viên */}
-                 <div className="bg-teal-50 p-4 rounded mb-4 border border-teal-100 flex justify-between items-center">
-                    <div>
-                        <span className="text-teal-800 font-bold uppercase text-sm mr-2">Học viên:</span>
-                        <strong className="text-lg text-teal-900">{formData.studentName || '....................'}</strong>
-                    </div>
-                    <div>
-                        <span className="text-teal-800 font-bold uppercase text-sm mr-2">Ngày:</span>
-                        <span className="text-base text-teal-900 font-semibold">{formatDate(formData.testDate)}</span>
-                    </div>
-                 </div>
+            // --- HÀM ĐỊNH DẠNG NGÀY ---
+            const formatDate = (dateString) => {
+                if (!dateString) return '';
+                const [year, month, day] = dateString.split('-');
+                return `${day}/${month}/${year}`;
+            };
 
-                 {/* Report Chậu */}
-                 <div className="mb-6">
-                    <h5 className="font-bold text-teal-800 mb-2 uppercase text-sm border-l-4 border-teal-600 pl-2">I. Trạng Thái Chậu</h5>
-                    <div className="overflow-hidden border border-gray-400 rounded">
-                        <table className="w-full text-sm border-collapse">
-                        <tbody>
-                            <tr>
-                                <td rowSpan={2} className="border border-gray-400 p-2 bg-blue-100 font-bold text-center w-24 align-middle text-teal-900" style={{verticalAlign: 'middle'}}>ĐỔ</td>
-                                <td className="border border-gray-400 p-2 w-32 font-semibold align-middle" style={{verticalAlign: 'middle'}}>Chậu Trái</td>
-                                <td className={`border border-gray-400 p-2 font-bold text-center align-middle ${getStatusColor(formData.pelvis.left)}`} style={{verticalAlign: 'middle'}}>{formData.pelvis.left}</td>
+            // --- MÀU SẮC ---
+            const getStatusColor = (value) => {
+                switch (value) {
+                case 'Bó / Ngắn': return 'text-red-600 font-bold bg-red-50';
+                case 'Lỏng / Dài': return 'text-blue-600 font-bold bg-blue-50';
+                case 'Đổ Trước': return 'text-orange-600 font-bold bg-orange-50';
+                case 'Đổ Sau': return 'text-indigo-600 font-bold bg-indigo-50';
+                case 'Nghiêng Trái': return 'text-green-600 font-bold bg-green-50';
+                case 'Nghiêng Phải': return 'text-rose-600 font-bold bg-rose-50';
+                case 'Phải xoay sau - Trái xoay trước': return 'text-fuchsia-600 font-bold bg-fuchsia-50';
+                case 'Trái xoay sau - Phải xoay trước': return 'text-cyan-600 font-bold bg-cyan-50';
+                case 'Chưa xác định': 
+                default: return 'text-gray-400 font-normal';
+                }
+            };
+
+            const muscleStatusOptions = ['Chưa xác định', 'Bó / Ngắn', 'Lỏng / Dài'];
+            const pelvisSideOptions = ['Chưa xác định', 'Đổ Trước', 'Đổ Sau'];
+            const pelvisTiltOptions = ['Chưa xác định', 'Nghiêng Trái', 'Nghiêng Phải'];
+            const pelvisRotationOptions = ['Chưa xác định', 'Phải xoay sau - Trái xoay trước', 'Trái xoay sau - Phải xoay trước'];
+
+            const handlePelvisChange = (field, value) => setFormData(prev => ({ ...prev, pelvis: { ...prev.pelvis, [field]: value } }));
+            const handleMuscleChange = (muscleKey, side, value) => setFormData(prev => ({ ...prev, muscles: { ...prev.muscles, [muscleKey]: { ...prev.muscles[muscleKey], [side]: value } } }));
+
+            // --- XUẤT ẢNH ---
+            const handleExportImage = async () => {
+                setIsExporting(true);
+                try {
+                const element = document.getElementById('report-print-area');
+                const canvas = await window.html2canvas(element, { 
+                    scale: 3, 
+                    useCORS: true, 
+                    backgroundColor: '#ffffff',
+                    windowWidth: 600, 
+                    onclone: (clonedDoc) => {
+                        const clonedElement = clonedDoc.getElementById('report-print-area');
+                        if(clonedElement) {
+                            clonedElement.style.width = '700px'; 
+                            clonedElement.style.padding = '30px';
+                        }
+                    }
+                });
+                
+                const image = canvas.toDataURL("image/png");
+                const link = document.createElement('a');
+                link.href = image;
+                link.download = `KetQua_${formData.studentName || 'HocVien'}.png`;
+                link.click();
+                } catch (err) {
+                alert("Lỗi khi xuất ảnh: " + err);
+                }
+                setIsExporting(false);
+            };
+
+            const generateTextReport = () => {
+                let text = `📋 BẢNG KẾT QUẢ TEST CHẬU\n👤 Học viên: ${formData.studentName}\n📅 Ngày: ${formatDate(formData.testDate)}\n---\n`;
+                text += `1. CHẬU:\n Trái: ${formData.pelvis.left}\n Phải: ${formData.pelvis.right}\n Nghiêng: ${formData.pelvis.tilt}\n Xoay: ${formData.pelvis.rotation}\n\n`;
+                text += `2. CƠ (Vấn đề):\n`;
+                Object.values(formData.muscles).forEach(m => {
+                    if(m.left !== 'Chưa xác định' || m.right !== 'Chưa xác định') text += `- ${m.name}: Trái(${m.left}) | Phải(${m.right})\n`;
+                });
+                return text;
+            };
+            
+            const copyToClipboard = () => {
+                navigator.clipboard.writeText(generateTextReport());
+                alert('Đã sao chép nội dung văn bản!');
+            };
+
+            const resetForm = () => {
+                if(confirm('Xóa hết dữ liệu để nhập mới?')) {
+                setFormData(initialData);
+                setShowReport(false);
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-gray-50 p-2 sm:p-4 font-sans text-slate-800">
+                <div className="max-w-5xl mx-auto bg-white shadow-xl rounded-none sm:rounded-xl overflow-hidden">
+                    
+                    {/* HEADER */}
+                    <div className="bg-teal-700 p-3 sm:p-4 text-white flex justify-between items-center sticky top-0 z-20 shadow-md">
+                    <div className="flex items-center gap-3">
+                        {/* Logo Upload */}
+                        <label className="cursor-pointer relative group" title="Bấm để đổi logo">
+                            <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                            <div className="w-10 h-14 sm:w-14 sm:h-20 bg-white rounded flex items-center justify-center shadow-lg overflow-hidden relative transition-transform transform group-hover:scale-105">
+                                <img 
+                                src={logo} 
+                                alt="Logo" 
+                                className="w-full h-full object-cover" 
+                                onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_LOGO; }}
+                                />
+                                <div className="absolute inset-0 bg-black/40 hidden group-hover:flex flex-col items-center justify-center text-white text-[8px] sm:text-[10px] font-bold text-center">
+                                    <Camera size={14} className="mb-1"/>
+                                    ĐỔI
+                                </div>
+                                {logo !== DEFAULT_LOGO && (
+                                    <button onClick={resetLogo} className="absolute bottom-0 right-0 bg-red-600 text-white p-0.5 z-20 hover:bg-red-700" title="Xóa"><Trash2 size={10} /></button>
+                                )}
+                            </div>
+                        </label>
+                        
+                        <div className="flex flex-col select-none">
+                        <h1 className="text-lg sm:text-2xl font-bold uppercase leading-tight tracking-wide">Cô Thư Bình An</h1>
+                        <span className="text-[10px] sm:text-sm text-teal-100 uppercase tracking-widest font-medium opacity-90">Bình Tâm - Trí Tuệ - Yêu Thương</span>
+                        </div>
+                    </div>
+                    
+                    <button onClick={resetForm} className="bg-teal-800 p-2 rounded-lg hover:bg-teal-900 transition-colors shadow-sm" title="Nhập mới"><RotateCcw size={18} /></button>
+                    </div>
+
+                    <div className="p-2 sm:p-6 space-y-4 sm:space-y-6">
+                    <h2 className="text-base sm:text-xl font-bold text-teal-800 text-center uppercase border-b-2 border-teal-100 pb-2 mt-2">
+                        Bảng Kiểm Tra Chậu
+                    </h2>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-gray-50 p-3 rounded border border-gray-200">
+                        <div><label className="text-xs font-bold text-gray-500 uppercase">Tên Học Viên</label><input type="text" value={formData.studentName} onChange={(e) => setFormData({...formData, studentName: e.target.value})} className="w-full p-2 border rounded text-sm" placeholder="Nhập tên..." /></div>
+                        <div><label className="text-xs font-bold text-gray-500 uppercase">Ngày Test</label><input type="date" value={formData.testDate} onChange={(e) => setFormData({...formData, testDate: e.target.value})} className="w-full p-2 border rounded text-sm" /></div>
+                    </div>
+
+                    {/* Bảng Chậu Input */}
+                    <div className="overflow-x-auto border border-gray-300 rounded shadow-sm">
+                        <h2 className="p-2 bg-gray-100 font-bold text-teal-800 uppercase text-xs border-b">1. Trạng Thái Chậu</h2>
+                        <table className="w-full text-xs sm:text-sm text-left border-collapse min-w-[350px]">
+                            <tbody>
+                            <tr className="border-b border-gray-200">
+                                <td rowSpan={2} className="p-1 bg-blue-50 font-bold text-center border-r w-12 sm:w-16 text-teal-900 align-middle" style={{verticalAlign: 'middle'}}>ĐỔ</td>
+                                <td className="p-1 w-20 sm:w-32 font-semibold border-r align-middle" style={{verticalAlign: 'middle'}}>Chậu Trái</td>
+                                <td className="p-1 align-middle" style={{verticalAlign: 'middle'}}>
+                                    <select value={formData.pelvis.left} onChange={(e) => handlePelvisChange('left', e.target.value)} className={`w-full p-1 sm:p-2 outline-none bg-transparent rounded ${getStatusColor(formData.pelvis.left)}`}>
+                                        {pelvisSideOptions.map(o=><option key={o} value={o} className="text-black bg-white font-normal">{o}</option>)}
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr className="border-b border-gray-200">
+                                <td className="p-1 font-semibold border-r align-middle" style={{verticalAlign: 'middle'}}>Chậu Phải</td>
+                                <td className="p-1 align-middle" style={{verticalAlign: 'middle'}}>
+                                    <select value={formData.pelvis.right} onChange={(e) => handlePelvisChange('right', e.target.value)} className={`w-full p-1 sm:p-2 outline-none bg-transparent rounded ${getStatusColor(formData.pelvis.right)}`}>
+                                        {pelvisSideOptions.map(o=><option key={o} value={o} className="text-black bg-white font-normal">{o}</option>)}
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr className="border-b border-gray-200">
+                                <td colSpan={2} className="p-1 bg-purple-50 font-bold text-center border-r align-middle text-teal-900" style={{verticalAlign: 'middle'}}>NGHIÊNG</td>
+                                <td className="p-1 align-middle" style={{verticalAlign: 'middle'}}>
+                                    <select value={formData.pelvis.tilt} onChange={(e) => handlePelvisChange('tilt', e.target.value)} className={`w-full p-1 sm:p-2 outline-none bg-transparent rounded ${getStatusColor(formData.pelvis.tilt)}`}>
+                                        {pelvisTiltOptions.map(o=><option key={o} value={o} className="text-black bg-white font-normal">{o}</option>)}
+                                    </select>
+                                </td>
                             </tr>
                             <tr>
-                                <td className="border border-gray-400 p-2 font-semibold align-middle" style={{verticalAlign: 'middle'}}>Chậu Phải</td>
-                                <td className={`border border-gray-400 p-2 font-bold text-center align-middle ${getStatusColor(formData.pelvis.right)}`} style={{verticalAlign: 'middle'}}>{formData.pelvis.right}</td>
+                                <td colSpan={2} className="p-1 bg-purple-50 font-bold text-center border-r align-middle text-teal-900" style={{verticalAlign: 'middle'}}>XOAY</td>
+                                <td className="p-1 align-middle" style={{verticalAlign: 'middle'}}>
+                                    <select value={formData.pelvis.rotation} onChange={(e) => handlePelvisChange('rotation', e.target.value)} className={`w-full p-1 sm:p-2 outline-none bg-transparent rounded ${getStatusColor(formData.pelvis.rotation)}`}>
+                                        {pelvisRotationOptions.map(o=><option key={o} value={o} className="text-black bg-white font-normal">{o}</option>)}
+                                    </select>
+                                </td>
                             </tr>
-                            <tr>
-                                <td colSpan={2} className="border border-gray-400 p-2 bg-purple-100 font-bold text-center align-middle text-teal-900" style={{verticalAlign: 'middle'}}>NGHIÊNG</td>
-                                <td className={`border border-gray-400 p-2 font-bold text-center align-middle ${getStatusColor(formData.pelvis.tilt)}`} style={{verticalAlign: 'middle'}}>{formData.pelvis.tilt}</td>
-                            </tr>
-                            <tr>
-                                <td colSpan={2} className="border border-gray-400 p-2 bg-purple-100 font-bold text-center align-middle text-teal-900" style={{verticalAlign: 'middle'}}>XOAY</td>
-                                <td className={`border border-gray-400 p-2 font-bold text-center align-middle ${getStatusColor(formData.pelvis.rotation)}`} style={{verticalAlign: 'middle'}}>{formData.pelvis.rotation}</td>
-                            </tr>
-                        </tbody>
+                            </tbody>
                         </table>
                     </div>
-                 </div>
 
-                 {/* Report Cơ */}
-                 <div className="mb-4">
-                    <h5 className="font-bold text-teal-800 mb-2 uppercase text-sm border-l-4 border-teal-600 pl-2">II. Trạng Thái Cơ</h5>
-                    <div className="overflow-hidden border border-gray-400 rounded">
-                        <table className="w-full text-sm border-collapse">
-                        <thead className="bg-teal-700 text-white print:bg-teal-700">
-                            <tr>
-                                <th className="border border-gray-400 p-2 w-10 text-center align-middle" style={{verticalAlign: 'middle'}}>#</th>
-                                <th className="border border-gray-400 p-2 text-left align-middle" style={{verticalAlign: 'middle'}}>Tên Cơ</th>
-                                <th className="border border-gray-400 p-2 w-28 text-center align-middle" style={{verticalAlign: 'middle'}}>Trái</th>
-                                <th className="border border-gray-400 p-2 w-28 text-center align-middle" style={{verticalAlign: 'middle'}}>Phải</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {Object.values(formData.muscles).map((m, idx) => (
-                                <tr key={idx}>
-                                    <td className="border border-gray-400 p-2 text-center text-gray-500 align-middle" style={{verticalAlign: 'middle'}}>{m.id}</td>
-                                    <td className="border border-gray-400 p-2 font-medium align-middle" style={{verticalAlign: 'middle'}}>{m.name}</td>
-                                    <td className={`border border-gray-400 p-2 text-center font-bold align-middle ${getStatusColor(m.left)}`} style={{verticalAlign: 'middle'}}>{m.left}</td>
-                                    <td className={`border border-gray-400 p-2 text-center font-bold align-middle ${getStatusColor(m.right)}`} style={{verticalAlign: 'middle'}}>{m.right}</td>
+                    {/* Bảng Cơ Input */}
+                    <div className="overflow-x-auto rounded border border-gray-300 shadow-sm">
+                        <h2 className="p-2 bg-gray-100 font-bold text-teal-800 uppercase text-xs border-b">2. Trạng Thái Cơ</h2>
+                        <table className="w-full text-xs sm:text-sm border-collapse min-w-[350px]">
+                            <thead className="bg-teal-700 text-white">
+                                <tr>
+                                    <th className="p-2 border border-teal-600 w-8 text-center align-middle" style={{verticalAlign: 'middle'}}>#</th>
+                                    <th className="p-2 border border-teal-600 text-left align-middle" style={{verticalAlign: 'middle'}}>Tên Cơ</th>
+                                    <th className="p-2 border border-teal-600 w-20 sm:w-28 text-center align-middle" style={{verticalAlign: 'middle'}}>Trái</th>
+                                    <th className="p-2 border border-teal-600 w-20 sm:w-28 text-center align-middle" style={{verticalAlign: 'middle'}}>Phải</th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white">
+                            {Object.entries(formData.muscles).map(([key, m], idx) => (
+                                <tr key={key} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                <td className="p-1 border text-center text-gray-500 align-middle" style={{verticalAlign: 'middle'}}>{m.id}</td>
+                                <td className="p-1 border font-medium align-middle" style={{verticalAlign: 'middle'}}>{m.name}</td>
+                                <td className="p-0.5 border align-middle" style={{verticalAlign: 'middle'}}>
+                                    <select value={m.left} onChange={(e) => handleMuscleChange(key, 'left', e.target.value)} className={`w-full p-1 sm:p-2 text-center outline-none bg-transparent rounded text-[11px] sm:text-sm ${getStatusColor(m.left)}`}>
+                                        {muscleStatusOptions.map(o=><option key={o} value={o} className="text-black bg-white font-normal">{o}</option>)}
+                                    </select>
+                                </td>
+                                <td className="p-0.5 border align-middle" style={{verticalAlign: 'middle'}}>
+                                    <select value={m.right} onChange={(e) => handleMuscleChange(key, 'right', e.target.value)} className={`w-full p-1 sm:p-2 text-center outline-none bg-transparent rounded text-[11px] sm:text-sm ${getStatusColor(m.right)}`}>
+                                        {muscleStatusOptions.map(o=><option key={o} value={o} className="text-black bg-white font-normal">{o}</option>)}
+                                    </select>
+                                </td>
                                 </tr>
                             ))}
-                        </tbody>
+                            </tbody>
                         </table>
                     </div>
-                 </div>
+                        
+                    <div><label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Ghi chú</label><textarea value={formData.note} onChange={(e) => setFormData({...formData, note: e.target.value})} className="w-full p-3 border border-gray-300 rounded h-20 outline-none focus:border-teal-500 text-sm" placeholder="..." /></div>
 
-                 {formData.note && (
-                    <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded text-sm text-gray-800 italic"><strong className="not-italic text-yellow-700">Ghi chú:</strong> {formData.note}</div>
-                 )}
-                 
-                 {/* Footer */}
-                 <div className="mt-8 text-center border-t border-gray-200 pt-4 pb-2">
-                    <p className="font-serif italic text-teal-700 text-base font-medium tracking-wide">
-                       ~ Bình Tâm - Trí Tuệ - Yêu Thương ~
-                    </p>
-                 </div>
-              </div>
-            </div>
+                    <div className="flex flex-col gap-3 pb-10">
+                        <button onClick={() => setShowReport(true)} className="w-full bg-teal-700 hover:bg-teal-800 text-white font-bold py-3 sm:py-4 rounded shadow-lg flex items-center justify-center gap-2 uppercase tracking-wide text-sm sm:text-base">
+                            <Save size={18} /> XUẤT KẾT QUẢ
+                        </button>
+                    </div>
+                    </div>
+                </div>
 
-            {/* Footer Buttons */}
-            <div className="p-3 sm:p-4 border-t bg-white flex flex-col sm:flex-row gap-2">
-              <button onClick={handleExportImage} disabled={isExporting} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded flex items-center justify-center gap-2 shadow text-sm sm:text-base">
-                {isExporting ? 'Đang xử lý...' : <><ImageIcon size={18} /> Tải Ảnh</>}
-              </button>
-              <button onClick={copyToClipboard} className="flex-none sm:w-auto px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded border border-gray-300 flex items-center justify-center" title="Copy Text"><Clipboard size={18} /></button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
+                {/* Modal Report */}
+                {showReport && (
+                    <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-2 sm:p-4 z-50 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full flex flex-col max-h-[95vh]">
+                        <div className="p-3 sm:p-4 border-b bg-teal-700 text-white flex justify-between items-center rounded-t-lg">
+                        <h3 className="font-bold text-base sm:text-lg flex items-center gap-2"><CheckCircle size={20} /> BẢNG KẾT QUẢ</h3>
+                        <button onClick={() => setShowReport(false)} className="text-white/80 hover:text-white rounded p-1"><XIcon size={24} /></button>
+                        </div>
+                        
+                        <div className="p-2 sm:p-4 overflow-y-auto bg-slate-100 font-sans">
+                        
+                        {/* === KHU VỰC IN ẢNH === */}
+                        <div id="report-print-area" className="bg-white p-4 sm:p-8 shadow-sm rounded-lg mx-auto w-full" style={{minWidth: '600px'}}>
+                            
+                            <div className="border-b-2 border-teal-600 pb-3 mb-4 text-center">
+                                <h1 className="text-2xl font-bold text-teal-900 uppercase">BẢNG KẾT QUẢ TEST CHẬU</h1>
+                            </div>
 
-export default PelvicTestApp;
+                            <div className="bg-teal-50 p-4 rounded mb-4 border border-teal-100 flex justify-between items-center">
+                                <div>
+                                    <span className="text-teal-800 font-bold uppercase text-sm mr-2">Học viên:</span>
+                                    <strong className="text-lg text-teal-900">{formData.studentName || '....................'}</strong>
+                                </div>
+                                <div>
+                                    <span className="text-teal-800 font-bold uppercase text-sm mr-2">Ngày:</span>
+                                    <span className="text-base text-teal-900 font-semibold">{formatDate(formData.testDate)}</span>
+                                </div>
+                            </div>
+
+                            <div className="mb-6">
+                                <h5 className="font-bold text-teal-800 mb-2 uppercase text-sm border-l-4 border-teal-600 pl-2">I. Trạng Thái Chậu</h5>
+                                <div className="overflow-hidden border border-gray-400 rounded">
+                                    <table className="w-full text-sm border-collapse">
+                                    <tbody>
+                                        <tr>
+                                            <td rowSpan={2} className="border border-gray-400 p-2 bg-blue-100 font-bold text-center w-24 align-middle text-teal-900" style={{verticalAlign: 'middle'}}>ĐỔ</td>
+                                            <td className="border border-gray-400 p-2 w-32 font-semibold align-middle" style={{verticalAlign: 'middle'}}>Chậu Trái</td>
+                                            <td className={`border border-gray-400 p-2 font-bold text-center align-middle ${getStatusColor(formData.pelvis.left)}`} style={{verticalAlign: 'middle'}}>{formData.pelvis.left}</td>
+                                        </tr>
+                                        <tr>
+                                            <td className="border border-gray-400 p-2 font-semibold align-middle" style={{verticalAlign: 'middle'}}>Chậu Phải</td>
+                                            <td className={`border border-gray-400 p-2 font-bold text-center align-middle ${getStatusColor(formData.pelvis.right)}`} style={{verticalAlign: 'middle'}}>{formData.pelvis.right}</td>
+                                        </tr>
+                                        <tr>
+                                            <td colSpan={2} className="border border-gray-400 p-2 bg-purple-100 font-bold text-center align-middle text-teal-900" style={{verticalAlign: 'middle'}}>NGHIÊNG</td>
+                                            <td className={`border border-gray-400 p-2 font-bold text-center align-middle ${getStatusColor(formData.pelvis.tilt)}`} style={{verticalAlign: 'middle'}}>{formData.pelvis.tilt}</td>
+                                        </tr>
+                                        <tr>
+                                            <td colSpan={2} className="border border-gray-400 p-2 bg-purple-100 font-bold text-center align-middle text-teal-900" style={{verticalAlign: 'middle'}}>XOAY</td>
+                                            <td className={`border border-gray-400 p-2 font-bold text-center align-middle ${getStatusColor(formData.pelvis.rotation)}`} style={{verticalAlign: 'middle'}}>{formData.pelvis.rotation}</td>
+                                        </tr>
+                                    </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div className="mb-4">
+                                <h5 className="font-bold text-teal-800 mb-2 uppercase text-sm border-l-4 border-teal-600 pl-2">II. Trạng Thái Cơ</h5>
+                                <div className="overflow-hidden border border-gray-400 rounded">
+                                    <table className="w-full text-sm border-collapse">
+                                    <thead className="bg-teal-700 text-white print:bg-teal-700">
+                                        <tr>
+                                            <th className="border border-gray-400 p-2 w-10 text-center align-middle" style={{verticalAlign: 'middle'}}>#</th>
+                                            <th className="border border-gray-400 p-2 text-left align-middle" style={{verticalAlign: 'middle'}}>Tên Cơ</th>
+                                            <th className="border border-gray-400 p-2 w-28 text-center align-middle" style={{verticalAlign: 'middle'}}>Trái</th>
+                                            <th className="border border-gray-400 p-2 w-28 text-center align-middle" style={{verticalAlign: 'middle'}}>Phải</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {Object.values(formData.muscles).map((m, idx) => (
+                                            <tr key={idx}>
+                                                <td className="border border-gray-400 p-2 text-center text-gray-500 align-middle" style={{verticalAlign: 'middle'}}>{m.id}</td>
+                                                <td className="border border-gray-400 p-2 font-medium align-middle" style={{verticalAlign: 'middle'}}>{m.name}</td>
+                                                <td className={`border border-gray-400 p-2 text-center font-bold align-middle ${getStatusColor(m.left)}`} style={{verticalAlign: 'middle'}}>{m.left}</td>
+                                                <td className={`border border-gray-400 p-2 text-center font-bold align-middle ${getStatusColor(m.right)}`} style={{verticalAlign: 'middle'}}>{m.right}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {formData.note && (
+                                <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded text-sm text-gray-800 italic"><strong className="not-italic text-yellow-700">Ghi chú:</strong> {formData.note}</div>
+                            )}
+                            
+                            <div className="mt-8 text-center border-t border-gray-200 pt-4 pb-2">
+                                <p className="font-serif italic text-teal-700 text-base font-medium tracking-wide">
+                                ~ Bình Tâm - Trí Tuệ - Yêu Thương ~
+                                </p>
+                            </div>
+                        </div>
+                        </div>
+
+                        <div className="p-3 sm:p-4 border-t bg-white flex flex-col sm:flex-row gap-2">
+                        <button onClick={handleExportImage} disabled={isExporting} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded flex items-center justify-center gap-2 shadow text-sm sm:text-base">
+                            {isExporting ? 'Đang xử lý...' : <><ImageIcon size={18} /> Tải Ảnh</>}
+                        </button>
+                        <button onClick={copyToClipboard} className="flex-none sm:w-auto px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded border border-gray-300 flex items-center justify-center" title="Copy Text"><Clipboard size={18} /></button>
+                        </div>
+                    </div>
+                    </div>
+                )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<PelvicTestApp />);
+    </script>
+</body>
+</html>
